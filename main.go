@@ -11,6 +11,9 @@ import (
 	"strings"
 )
 
+var recursive bool = false
+var caseInSensitive = false
+
 func searchPattern_dir(directory_path, searchWord string, depth int) ([]string, error) {
 	var matchingLines []string
 
@@ -48,7 +51,13 @@ func searchPattern(filePath, searchWord string) ([]string, error) {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.Contains(line, searchWord) {
+
+		searchWord_local := searchWord
+		if caseInSensitive {
+			line = strings.ToLower(line)
+			searchWord_local = strings.ToLower(searchWord)
+		}
+		if strings.Contains(line, searchWord_local) {
 			matchingLines = append(matchingLines, line)
 		}
 	}
@@ -63,9 +72,8 @@ func searchPattern(filePath, searchWord string) ([]string, error) {
 func main() {
 	var path string
 	var searchWord string
-	var recursive bool
-
 	flag.BoolVar(&recursive, "r", false, "Enable recursive search")
+	flag.BoolVar(&caseInSensitive, "i", false, "Enable case insensitive search")
 	flag.StringVar(&path, "path", "", "Specify the file path")
 	flag.StringVar(&searchWord, "word", "", "Specify the word to search")
 
@@ -74,7 +82,7 @@ func main() {
 		fmt.Println("Both file path and search word are required.")
 		return
 	}
-
+	fmt.Println(caseInSensitive)
 	var matchingLines []string
 	var err error
 
