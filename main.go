@@ -82,14 +82,14 @@ func main() {
 		fmt.Println("Both file path and search word are required.")
 		return
 	}
-	fmt.Println(caseInSensitive)
 	var matchingLines []string
 	var err error
 
 	fileInfo, err := os.Stat(path)
 
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return
 	}
 	depth := 0
 	if recursive {
@@ -102,7 +102,8 @@ func main() {
 	}
 
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return
 	}
 
 	if len(matchingLines) > 0 {
