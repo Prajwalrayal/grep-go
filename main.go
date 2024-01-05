@@ -9,14 +9,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 var recursive bool = false
 var caseInSensitive = false
 
-func searchPattern_dir(directory_path, searchWord string, depth int) ([]string, error) {
+func searchPattern_dir(directory_path, searchWord string, depth int, wg *sync.WaitGroup, resultChan chan<- []string) {
 	var matchingLines []string
-
+	defer wg.Done()
 	err := filepath.WalkDir(directory_path, func(path string, dir fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -27,16 +28,27 @@ func searchPattern_dir(directory_path, searchWord string, depth int) ([]string, 
 		}
 
 		if !dir.IsDir() {
-			lines, err := searchPattern(path, searchWord)
-			if err != nil {
-				return err
-			}
-			matchingLines = append(matchingLines, lines...)
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				lines, err := searchPattern(path, searchWord)
+
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+				resultChan <- lines
+
+			}()
 		}
 		return nil
 	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	return matchingLines, err
+	resultChan <- matchingLines
 }
 
 func searchPattern(filePath, searchWord string) ([]string, error) {
@@ -84,6 +96,8 @@ func main() {
 	}
 	var matchingLines []string
 	var err error
+	resultChan := make(chan []string)
+	var wg sync.WaitGroup
 
 	fileInfo, err := os.Stat(path)
 
@@ -96,14 +110,19 @@ func main() {
 		depth = math.MaxInt64
 	}
 	if fileInfo.IsDir() {
-		matchingLines, err = searchPattern_dir(path, searchWord, depth)
+		wg.Add(1)
+		go searchPattern_dir(path, searchWord, depth, &wg, resultChan)
 	} else {
 		matchingLines, err = searchPattern(path, searchWord)
 	}
 
-	if err != nil {
-		fmt.Println(err)
-		return
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
+	for lines := range resultChan {
+		matchingLines = append(matchingLines, lines...)
 	}
 
 	if len(matchingLines) > 0 {
