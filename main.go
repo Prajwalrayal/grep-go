@@ -61,7 +61,10 @@ func searchPatternDir(directoryPath, searchWord string, depth int, wg *sync.Wait
 					return
 				}
 				// storing the result in channel
-				resultChan <- SearchResult{Path: path, MatchingLines: lines}
+				if len(lines)!=0{
+					resultChan <- SearchResult{Path: path, MatchingLines: lines}
+				}
+				
 			}()
 		}
 		return nil
