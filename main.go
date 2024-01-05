@@ -14,9 +14,14 @@ import (
 )
 
 // SearchResult represents the result of a search including the path and matching lines
+
+type pair struct {
+	LineNumber int
+	Line       string
+}
 type SearchResult struct {
 	Path          string
-	MatchingLines []string
+	MatchingLines []pair
 }
 
 // Global Flags
@@ -68,7 +73,7 @@ func searchPatternDir(directoryPath, searchWord string, depth int, wg *sync.Wait
 	}
 }
 
-func searchPattern(filePath, searchWord string) ([]string, error) {
+func searchPattern(filePath, searchWord string) ([]pair, error) {
 	// open file
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -76,10 +81,11 @@ func searchPattern(filePath, searchWord string) ([]string, error) {
 	}
 	defer file.Close()
 
-	var matchingLines []string
+	var matchingLines []pair
 
 	// creating a file buffer
 	scanner := bufio.NewScanner(file)
+	lineNumber := 1
 	for scanner.Scan() {
 		line := scanner.Text()
 
@@ -97,8 +103,9 @@ func searchPattern(filePath, searchWord string) ([]string, error) {
 			line = regex.ReplaceAllStringFunc(line, func(match string) string {
 				return Green + match + Reset
 			})
-			matchingLines = append(matchingLines, line)
+			matchingLines = append(matchingLines, pair{LineNumber: lineNumber, Line: line})
 		}
+		lineNumber++
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -165,7 +172,7 @@ func main() {
 		for _, result := range results {
 			fmt.Printf("File: %s\n", result.Path)
 			for _, line := range result.MatchingLines {
-				fmt.Printf("  %s\n", line)
+				fmt.Printf("  %d %s\n", line.LineNumber, line.Line)
 			}
 		}
 	} else {
