@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 )
@@ -24,24 +25,30 @@ var caseInSensitive = false
 var path string
 var searchWord string
 
+// ANSI escape codes for color formatting
+const (
+	Reset = "\033[0m"
+	Green = "\033[32m"
+)
+
 // Search in a Directory
-func searchPattern_dir(directory_path, searchWord string, depth int, wg *sync.WaitGroup, resultChan chan<- SearchResult) {
+func searchPatternDir(directoryPath, searchWord string, depth int, wg *sync.WaitGroup, resultChan chan<- SearchResult) {
 	defer wg.Done()
-	err := filepath.WalkDir(directory_path, func(path string, dir fs.DirEntry, err error) error {
+	err := filepath.WalkDir(directoryPath, func(path string, dir fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		// checking the depth to implement recursive/non recursive search
+		// checking the depth to implement recursive/non-recursive search
 		if dir.IsDir() && strings.Count(path, string(os.PathSeparator)) > depth {
 			return fs.SkipDir
 		}
 
 		if !dir.IsDir() {
-			// add a go routine
+			// add a goroutine
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				// concurently opening files
+				// concurrently opening files
 				lines, err := searchPattern(path, searchWord)
 
 				if err != nil {
@@ -50,7 +57,6 @@ func searchPattern_dir(directory_path, searchWord string, depth int, wg *sync.Wa
 				}
 				// storing the result in channel
 				resultChan <- SearchResult{Path: path, MatchingLines: lines}
-
 			}()
 		}
 		return nil
@@ -60,7 +66,6 @@ func searchPattern_dir(directory_path, searchWord string, depth int, wg *sync.Wa
 		fmt.Println(err)
 		return
 	}
-
 }
 
 func searchPattern(filePath, searchWord string) ([]string, error) {
@@ -78,14 +83,20 @@ func searchPattern(filePath, searchWord string) ([]string, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		// local copy of search word to handle case sensetive/insensitive search
-		searchWord_local := searchWord
+		// local copy of search word to handle case sensitive/insensitive search
+		searchWordLocal := searchWord
 		if caseInSensitive {
 			line = strings.ToLower(line)
-			searchWord_local = strings.ToLower(searchWord)
+			searchWordLocal = strings.ToLower(searchWord)
 		}
+
 		// linear search for word in line
-		if strings.Contains(line, searchWord_local) {
+		if strings.Contains(line, searchWordLocal) {
+			// Highlight the search word in the line
+			regex := regexp.MustCompile(fmt.Sprintf(`%s`, searchWordLocal))
+			line = regex.ReplaceAllStringFunc(line, func(match string) string {
+				return Green + match + Reset
+			})
 			matchingLines = append(matchingLines, line)
 		}
 	}
@@ -98,15 +109,14 @@ func searchPattern(filePath, searchWord string) ([]string, error) {
 }
 
 func main() {
-
-	//Parsing the input flags
+	// Parsing the input flags
 	flag.BoolVar(&recursive, "r", false, "Enable recursive search")
-	flag.BoolVar(&caseInSensitive, "i", false, "Enable case insensitive search")
+	flag.BoolVar(&caseInSensitive, "i", false, "Enable case-insensitive search")
 	flag.StringVar(&path, "path", "", "Specify the file path")
 	flag.StringVar(&searchWord, "word", "", "Specify the word to search")
 	flag.Parse()
 
-	// if either path or searchword is missing
+	// if either path or search word is missing
 	if path == "" || searchWord == "" {
 		fmt.Println("Both file path and search word are required.")
 		return
@@ -124,15 +134,15 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	// default depth is 0 , if recursive then infinite depth
+	// default depth is 0, if recursive then infinite depth
 	depth := 0
 	if recursive {
 		depth = math.MaxInt64
 	}
 	if fileInfo.IsDir() {
-		// add go routine
+		// add goroutine
 		wg.Add(1)
-		go searchPattern_dir(path, searchWord, depth, &wg, resultChan)
+		go searchPatternDir(path, searchWord, depth, &wg, resultChan)
 	} else {
 		lines, err := searchPattern(path, searchWord)
 		if err != nil {
