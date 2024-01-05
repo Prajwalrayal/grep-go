@@ -1,6 +1,3 @@
-Certainly! Here's an updated README template with the repository name "grep-go":
-
-```markdown
 # grep-go: Concurrent File Search in Go
 
 A command-line utility written in Go for recursively searching files for a specific word or pattern concurrently.
@@ -57,10 +54,3 @@ This project uses only the standard libraries provided by Go. No external depend
 ## Contributing
 
 Feel free to contribute by opening issues or submitting pull requests. Contributions are welcome!
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-```
-
-Make sure to replace placeholders such as `yourusername`, `grep-go`, and provide relevant details in the README, such as how to install, use, and contribute to the project. Additionally, update the license section with the appropriate licensing information for your project.
