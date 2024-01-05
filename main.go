@@ -12,6 +12,12 @@ import (
 	"sync"
 )
 
+// SearchResult represents the result of a search including the path and matching lines
+type SearchResult struct {
+	Path          string
+	MatchingLines []string
+}
+
 // Global Flags
 var recursive bool = false
 var caseInSensitive = false
@@ -19,7 +25,7 @@ var path string
 var searchWord string
 
 // Search in a Directory
-func searchPattern_dir(directory_path, searchWord string, depth int, wg *sync.WaitGroup, resultChan chan<- []string) {
+func searchPattern_dir(directory_path, searchWord string, depth int, wg *sync.WaitGroup, resultChan chan<- SearchResult) {
 	defer wg.Done()
 	err := filepath.WalkDir(directory_path, func(path string, dir fs.DirEntry, err error) error {
 		if err != nil {
@@ -43,7 +49,7 @@ func searchPattern_dir(directory_path, searchWord string, depth int, wg *sync.Wa
 					return
 				}
 				// storing the result in channel
-				resultChan <- lines
+				resultChan <- SearchResult{Path: path, MatchingLines: lines}
 
 			}()
 		}
@@ -105,10 +111,10 @@ func main() {
 		fmt.Println("Both file path and search word are required.")
 		return
 	}
-	var matchingLines []string
+	var results []SearchResult
 	var err error
 	// create a channel and wait group
-	resultChan := make(chan []string)
+	resultChan := make(chan SearchResult)
 	var wg sync.WaitGroup
 
 	// get file info
@@ -128,7 +134,11 @@ func main() {
 		wg.Add(1)
 		go searchPattern_dir(path, searchWord, depth, &wg, resultChan)
 	} else {
-		matchingLines, err = searchPattern(path, searchWord)
+		lines, err := searchPattern(path, searchWord)
+		if err != nil {
+			return
+		}
+		results = append(results, SearchResult{Path: path, MatchingLines: lines})
 	}
 	// waiting for goroutines to end
 	go func() {
@@ -136,16 +146,19 @@ func main() {
 		close(resultChan)
 	}()
 	// extracting results from channel
-	for lines := range resultChan {
-		matchingLines = append(matchingLines, lines...)
+	for result := range resultChan {
+		results = append(results, result)
 	}
-	// display result
-	if len(matchingLines) > 0 {
-		fmt.Printf("The word '%s' was found in the following lines :\n", searchWord)
-		for _, line := range matchingLines {
-			fmt.Println(line)
+
+	if len(results) > 0 {
+		fmt.Printf("Search results for the word '%s':\n", searchWord)
+		for _, result := range results {
+			fmt.Printf("File: %s\n", result.Path)
+			for _, line := range result.MatchingLines {
+				fmt.Printf("  %s\n", line)
+			}
 		}
 	} else {
-		fmt.Printf("The word '%s' was not found'\n", searchWord)
+		fmt.Printf("The word '%s' was not found.\n", searchWord)
 	}
 }
