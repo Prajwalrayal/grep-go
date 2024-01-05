@@ -61,10 +61,10 @@ func searchPatternDir(directoryPath, searchWord string, depth int, wg *sync.Wait
 					return
 				}
 				// storing the result in channel
-				if len(lines)!=0{
+				if len(lines) != 0 {
 					resultChan <- SearchResult{Path: path, MatchingLines: lines}
 				}
-				
+
 			}()
 		}
 		return nil
@@ -129,6 +129,7 @@ func main() {
 	// if either path or search word is missing
 	if path == "" || searchWord == "" {
 		fmt.Println("Both file path and search word are required.")
+		fmt.Println("Check if path contains space then this won't work")
 		return
 	}
 	var results []SearchResult
