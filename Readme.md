@@ -23,7 +23,7 @@ cd grep-go
 Build the executable:
 
 ```bash
-go build -o grep-go main.go
+go build -o grep-go *.go
 ```
 
 ### Usage
